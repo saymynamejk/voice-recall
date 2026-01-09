@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Settings, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,6 +14,7 @@ interface AppLayoutProps {
   showRecordFab?: boolean;
   onRecord?: () => void;
   headerAction?: ReactNode;
+  backTo?: string;
 }
 
 export function AppLayout({
@@ -25,8 +26,28 @@ export function AppLayout({
   showRecordFab,
   onRecord,
   headerAction,
+  backTo,
 }: AppLayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    if (backTo) {
+      navigate(backTo);
+    } else if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      // Fallback to sensible routes based on current path
+      const path = location.pathname;
+      if (path.startsWith('/settings')) {
+        navigate('/settings');
+      } else if (path.startsWith('/projects/')) {
+        navigate('/');
+      } else {
+        navigate('/');
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -37,7 +58,7 @@ export function AppLayout({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="mr-2"
             >
               <ArrowLeft className="w-5 h-5" />
