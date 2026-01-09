@@ -16,6 +16,9 @@ import AISettings from "./pages/AISettings";
 import Search from "./pages/Search";
 import NewProject from "./pages/NewProject";
 import Auth from "./pages/Auth";
+import Appearance from "./pages/Appearance";
+import HelpFAQ from "./pages/HelpFAQ";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +40,9 @@ const App = () => (
               <Route path="/projects/:projectId/daily-log" element={<DailyLog />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/ai" element={<AISettings />} />
+              <Route path="/settings/appearance" element={<Appearance />} />
+              <Route path="/help" element={<HelpFAQ />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/search" element={<Search />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

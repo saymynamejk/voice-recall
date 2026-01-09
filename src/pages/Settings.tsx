@@ -1,9 +1,6 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   User,
-  Mic,
   Brain,
   Palette,
   Shield,
@@ -16,12 +13,10 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { useFirebase, useAuth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -68,13 +63,10 @@ const Settings = () => {
   const { settings, setSettings } = useApp();
   const { isConfigured } = useFirebase();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const handleAudioQualityChange = (quality: 'standard' | 'high' | 'lossless') => {
     setSettings({ ...settings, audioQuality: quality });
-  };
-
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
-    setSettings({ ...settings, theme });
   };
 
   const handleLogout = () => {
@@ -205,27 +197,35 @@ const Settings = () => {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Theme</p>
+                  <p className="text-sm text-muted-foreground">Choose light, dark, or system</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                {(['dark', 'light', 'system'] as const).map((theme) => (
+                {(['dark', 'light', 'system'] as const).map((t) => (
                   <button
-                    key={theme}
-                    onClick={() => handleThemeChange(theme)}
+                    key={t}
+                    onClick={() => setTheme(t)}
                     className={cn(
                       'py-2 px-3 rounded-lg text-sm font-medium transition-colors capitalize',
-                      settings.theme === theme
+                      theme === t
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted hover:bg-muted/80'
                     )}
                   >
-                    {theme}
+                    {t}
                   </button>
                 ))}
               </div>
             </div>
           </Card>
+          
+          <button
+            onClick={() => navigate('/settings/appearance')}
+            className="w-full mt-2 text-sm text-primary hover:underline text-center py-2"
+          >
+            More appearance options →
+          </button>
         </section>
 
         {/* Help & Privacy */}
@@ -235,12 +235,14 @@ const Settings = () => {
             <SettingItem
               icon={<HelpCircle className="w-5 h-5" />}
               label="Help & FAQ"
-              onClick={() => window.open('https://nona.app/help', '_blank')}
+              description="Get answers to common questions"
+              onClick={() => navigate('/help')}
             />
             <SettingItem
               icon={<Shield className="w-5 h-5" />}
               label="Privacy Policy"
-              onClick={() => window.open('https://nona.app/privacy', '_blank')}
+              description="How we handle your data"
+              onClick={() => navigate('/privacy')}
             />
           </Card>
         </section>
