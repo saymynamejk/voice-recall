@@ -120,15 +120,17 @@ export function VoiceNoteCard({
                 {projectName}
               </span>
             )}
-            <span
-              className="px-2 py-0.5 text-xs font-medium rounded-full"
-              style={{
-                backgroundColor: `hsl(var(--${config.color}) / 0.1)`,
-                color: `hsl(var(--${config.color}))`,
-              }}
-            >
-              {config.label}
-            </span>
+            {showBucket && (
+              <span
+                className="px-2 py-0.5 text-xs font-medium rounded-full"
+                style={{
+                  backgroundColor: `hsl(var(--${config.color}) / 0.1)`,
+                  color: `hsl(var(--${config.color}))`,
+                }}
+              >
+                {config.label}
+              </span>
+            )}
             {note.status === 'resolved' && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-success/10 text-success">
                 Resolved
@@ -182,14 +184,14 @@ export function VoiceNoteCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {note.status === 'open' && onResolve && (
-                <DropdownMenuItem onClick={onResolve}>
+              {note.status === 'open' && onStatusChange && (
+                <DropdownMenuItem onClick={() => onStatusChange('resolved')}>
                   <Check className="w-4 h-4 mr-2" />
                   Mark as resolved
                 </DropdownMenuItem>
               )}
-              {onArchive && (
-                <DropdownMenuItem onClick={onArchive}>
+              {note.status !== 'archived' && onStatusChange && (
+                <DropdownMenuItem onClick={() => onStatusChange('archived')}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archive
                 </DropdownMenuItem>
