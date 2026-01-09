@@ -15,12 +15,13 @@ import { formatDistanceToNow } from 'date-fns';
 interface VoiceNoteCardProps {
   note: VoiceNote;
   onPlay?: () => void;
-  onResolve?: () => void;
-  onArchive?: () => void;
+  onStatusChange?: (status: 'open' | 'resolved' | 'archived') => void;
   onDelete?: () => void;
   showProject?: boolean;
+  showBucket?: boolean;
   projectName?: string;
   projectColor?: string;
+  highlightText?: string;
 }
 
 function formatDuration(seconds: number): string {
@@ -32,12 +33,13 @@ function formatDuration(seconds: number): string {
 export function VoiceNoteCard({
   note,
   onPlay,
-  onResolve,
-  onArchive,
+  onStatusChange,
   onDelete,
   showProject,
+  showBucket = true,
   projectName,
   projectColor,
+  highlightText,
 }: VoiceNoteCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
