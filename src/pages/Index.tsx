@@ -1,28 +1,51 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Mic, FolderOpen, Search } from 'lucide-react';
+import { Plus, Mic, FolderOpen, Search, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-
-// Demo data for now
-const demoProjects = [
-  {
-    id: '1',
-    name: 'nona App',
-    description: 'Voice-first developer workspace',
-    color: '#8B5CF6',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: '1',
-    isArchived: false,
-  },
-];
+import { useProjects } from '@/hooks/useProjects';
+import { useVoiceNotes } from '@/hooks/useVoiceNotes';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [projects] = useState(demoProjects);
+  const { toast } = useToast();
+  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: allNotes } = useVoiceNotes();
+
+  // Check auth status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  // Calculate stats per project
+  const getProjectStats = (projectId: string) => {
+    const projectNotes = allNotes?.filter(n => n.project_id === projectId) || [];
+    return {
+      openBugsCount: projectNotes.filter(n => n.bucket_type === 'bugs' && n.status === 'open').length,
+      pendingFeaturesCount: projectNotes.filter(n => n.bucket_type === 'features' && n.status === 'open').length,
+      totalNotes: projectNotes.length,
+    };
+  };
+
+  if (projectsLoading) {
+    return (
+      <AppLayout title="nona" subtitle="Voice-first developer workspace">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout 
@@ -60,7 +83,7 @@ const Index = () => {
             </Button>
           </div>
 
-          {projects.length === 0 ? (
+          {!projects || projects.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -78,8 +101,17 @@ const Index = () => {
               {projects.map((project) => (
                 <ProjectCard
                   key={project.id}
-                  project={project}
-                  stats={{ openBugsCount: 2, pendingFeaturesCount: 5, totalNotes: 12 }}
+                  project={{
+                    id: project.id,
+                    name: project.name,
+                    description: project.description || '',
+                    color: project.color,
+                    createdAt: new Date(project.created_at),
+                    updatedAt: new Date(project.updated_at),
+                    userId: project.user_id,
+                    isArchived: project.is_archived,
+                  }}
+                  stats={getProjectStats(project.id)}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 />
               ))}

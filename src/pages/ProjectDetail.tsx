@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreVertical, Edit2, Archive, Trash2, Plus } from 'lucide-react';
+import { MoreVertical, Edit2, Archive, Trash2, Plus, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { BucketCard } from '@/components/buckets/BucketCard';
 import { RecordingModal } from '@/components/voice/RecordingModal';
@@ -13,73 +13,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useApp } from '@/context/AppContext';
-import { BucketType, BUCKET_CONFIG, Project, VoiceNote } from '@/types';
-
-// Demo data - will be replaced with Firebase
-const demoProject: Project = {
-  id: '1',
-  name: 'nona App',
-  description: 'Voice-first developer workspace',
-  color: '#8B5CF6',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  userId: '1',
-  isArchived: false,
-};
-
-const demoNotes: VoiceNote[] = [
-  {
-    id: '1',
-    projectId: '1',
-    bucketType: 'bugs',
-    status: 'open',
-    audioUrl: '',
-    duration: 45,
-    quality: 'high',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    title: 'Login button not responding on mobile',
-    userId: '1',
-  },
-  {
-    id: '2',
-    projectId: '1',
-    bucketType: 'bugs',
-    status: 'open',
-    audioUrl: '',
-    duration: 30,
-    quality: 'high',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    title: 'Audio playback stops when screen locks',
-    userId: '1',
-  },
-  {
-    id: '3',
-    projectId: '1',
-    bucketType: 'features',
-    status: 'open',
-    audioUrl: '',
-    duration: 60,
-    quality: 'high',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    title: 'Add dark mode toggle',
-    userId: '1',
-  },
-];
+import { useProject } from '@/hooks/useProjects';
+import { useVoiceNotes, useCreateVoiceNote } from '@/hooks/useVoiceNotes';
+import { BucketType, BUCKET_CONFIG } from '@/types';
 
 const ProjectDetail = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { setCurrentProject, setCurrentBucket } = useApp();
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [selectedBucket, setSelectedBucket] = useState<BucketType | null>(null);
 
-  // In production, fetch from Firebase
-  const project = demoProject;
-  const notes = demoNotes.filter((n) => n.projectId === projectId);
+  const { data: project, isLoading: projectLoading } = useProject(projectId);
+  const { data: notes = [], isLoading: notesLoading } = useVoiceNotes(projectId);
+  const createVoiceNote = useCreateVoiceNote();
 
   // Calculate counts per bucket
   const bucketCounts = useMemo(() => {
@@ -91,9 +37,12 @@ const ProjectDetail = () => {
     };
 
     notes.forEach((note) => {
-      counts[note.bucketType].total++;
-      if (note.status === 'open') {
-        counts[note.bucketType].open++;
+      const bucketType = note.bucket_type as BucketType;
+      if (counts[bucketType]) {
+        counts[bucketType].total++;
+        if (note.status === 'open') {
+          counts[bucketType].open++;
+        }
       }
     });
 
@@ -101,7 +50,6 @@ const ProjectDetail = () => {
   }, [notes]);
 
   const handleBucketClick = (type: BucketType) => {
-    setCurrentBucket(type);
     if (type === 'daily-log') {
       navigate(`/projects/${projectId}/daily-log`);
     } else {
@@ -115,10 +63,26 @@ const ProjectDetail = () => {
   };
 
   const handleRecordingSave = async (blob: Blob, duration: number, bucket: BucketType) => {
-    // In production: upload to Firebase Storage, create Firestore doc
-    console.log('Saving recording:', { blob, duration, bucket });
+    if (!projectId) return;
+    
+    await createVoiceNote.mutateAsync({
+      project_id: projectId,
+      bucket_type: bucket,
+      audio_blob: blob,
+      duration,
+    });
     setShowRecordingModal(false);
   };
+
+  if (projectLoading || notesLoading) {
+    return (
+      <AppLayout title="Loading..." showBack>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!project) {
     return (
@@ -136,7 +100,7 @@ const ProjectDetail = () => {
   return (
     <AppLayout
       title={project.name}
-      subtitle={project.description}
+      subtitle={project.description || undefined}
       showBack
       showRecordFab
       onRecord={() => handleRecord()}
@@ -222,29 +186,33 @@ const ProjectDetail = () => {
           <section className="space-y-3">
             <h2 className="font-semibold">Recent Activity</h2>
             <div className="space-y-2">
-              {notes.slice(0, 3).map((note) => (
-                <motion.div
-                  key={note.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-3 rounded-lg border bg-card"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{
-                        backgroundColor: `hsl(var(--${BUCKET_CONFIG[note.bucketType].color}))`,
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {BUCKET_CONFIG[note.bucketType].label}
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium truncate">
-                    {note.title || 'Untitled recording'}
-                  </p>
-                </motion.div>
-              ))}
+              {notes.slice(0, 3).map((note) => {
+                const bucketType = note.bucket_type as BucketType;
+                const config = BUCKET_CONFIG[bucketType];
+                return (
+                  <motion.div
+                    key={note.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-3 rounded-lg border bg-card"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                          backgroundColor: `hsl(var(--${config?.color || 'primary'}))`,
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {config?.label || bucketType}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium truncate">
+                      {note.title || 'Untitled recording'}
+                    </p>
+                  </motion.div>
+                );
+              })}
             </div>
           </section>
         )}
