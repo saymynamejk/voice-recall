@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, SortAsc, Plus, CheckCircle2 } from 'lucide-react';
+import { SortAsc, Plus, CheckCircle2, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { VoiceNoteCard } from '@/components/voice/VoiceNoteCard';
 import { RecordingModal } from '@/components/voice/RecordingModal';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,60 +13,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BucketType, BUCKET_CONFIG, VoiceNote, NoteStatus } from '@/types';
-
-// Demo data
-const demoNotes: VoiceNote[] = [
-  {
-    id: '1',
-    projectId: '1',
-    bucketType: 'bugs',
-    status: 'open',
-    audioUrl: '',
-    duration: 45,
-    quality: 'high',
-    createdAt: new Date(Date.now() - 1000 * 60 * 30),
-    updatedAt: new Date(),
-    title: 'Login button not responding on mobile Safari',
-    transcript: 'The login button on the landing page is not responding to taps on mobile Safari. I tested on iPhone 14 Pro and the issue is consistent. Need to check the click handler.',
-    tags: ['mobile', 'safari', 'authentication'],
-    userId: '1',
-  },
-  {
-    id: '2',
-    projectId: '1',
-    bucketType: 'bugs',
-    status: 'open',
-    audioUrl: '',
-    duration: 30,
-    quality: 'high',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    updatedAt: new Date(),
-    title: 'Audio playback stops when screen locks',
-    transcript: 'When playing back voice notes, if the screen locks the audio stops. Need to implement background audio session.',
-    tags: ['audio', 'playback'],
-    userId: '1',
-  },
-  {
-    id: '3',
-    projectId: '1',
-    bucketType: 'bugs',
-    status: 'resolved',
-    audioUrl: '',
-    duration: 25,
-    quality: 'high',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    updatedAt: new Date(),
-    title: 'Fixed navigation crash on Android',
-    userId: '1',
-  },
-];
+import { BucketType, BUCKET_CONFIG, NoteStatus } from '@/types';
+import { useVoiceNotes, useCreateVoiceNote, useUpdateVoiceNote, useDeleteVoiceNote } from '@/hooks/useVoiceNotes';
 
 type SortOption = 'newest' | 'oldest' | 'longest' | 'shortest';
 
 const BucketView = () => {
   const { projectId, bucketType } = useParams<{ projectId: string; bucketType: BucketType }>();
-  const navigate = useNavigate();
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<NoteStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -75,8 +27,27 @@ const BucketView = () => {
   const bucket = bucketType as BucketType;
   const config = BUCKET_CONFIG[bucket];
 
-  // In production, fetch from Firebase
-  const allNotes = demoNotes.filter((n) => n.bucketType === bucket);
+  const { data: allNotesRaw = [], isLoading } = useVoiceNotes(projectId, bucket);
+  const createVoiceNote = useCreateVoiceNote();
+  const updateVoiceNote = useUpdateVoiceNote();
+  const deleteVoiceNote = useDeleteVoiceNote();
+
+  // Convert to expected format
+  const allNotes = allNotesRaw.map(note => ({
+    id: note.id,
+    projectId: note.project_id,
+    bucketType: note.bucket_type as BucketType,
+    status: note.status as NoteStatus,
+    audioUrl: note.audio_url || '',
+    duration: note.duration,
+    quality: note.quality as 'standard' | 'high' | 'lossless',
+    createdAt: new Date(note.created_at),
+    updatedAt: new Date(note.updated_at),
+    title: note.title || undefined,
+    transcript: note.transcription || undefined,
+    tags: note.tags || [],
+    userId: note.user_id,
+  }));
 
   // Filter and sort
   const filteredNotes = useMemo(() => {
@@ -115,22 +86,42 @@ const BucketView = () => {
     };
   }, [allNotes]);
 
-  const handlePlay = (note: VoiceNote) => {
-    console.log('Play note:', note.id);
+  const handlePlay = (noteId: string, audioUrl: string) => {
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play();
+    }
   };
 
   const handleStatusChange = (noteId: string, status: NoteStatus) => {
-    console.log('Change status:', noteId, status);
+    updateVoiceNote.mutate({ id: noteId, status });
   };
 
   const handleDelete = (noteId: string) => {
-    console.log('Delete note:', noteId);
+    deleteVoiceNote.mutate(noteId);
   };
 
   const handleRecordingSave = async (blob: Blob, duration: number, bucket: BucketType) => {
-    console.log('Saving recording:', { blob, duration, bucket });
+    if (!projectId) return;
+    
+    await createVoiceNote.mutateAsync({
+      project_id: projectId,
+      bucket_type: bucket,
+      audio_blob: blob,
+      duration,
+    });
     setShowRecordingModal(false);
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout title={config?.label || 'Loading...'} showBack>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout
@@ -236,7 +227,7 @@ const BucketView = () => {
                   <VoiceNoteCard
                     note={note}
                     showBucket={false}
-                    onPlay={() => handlePlay(note)}
+                    onPlay={() => handlePlay(note.id, note.audioUrl)}
                     onStatusChange={(status) => handleStatusChange(note.id, status)}
                     onDelete={() => handleDelete(note.id)}
                   />
