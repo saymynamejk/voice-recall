@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Mic, FolderOpen } from 'lucide-react';
+import { Plus, Mic, FolderOpen, Search } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,15 @@ const Index = () => {
   const [projects] = useState(demoProjects);
 
   return (
-    <AppLayout title="nona" subtitle="Voice-first developer workspace">
+    <AppLayout 
+      title="nona" 
+      subtitle="Voice-first developer workspace"
+      headerAction={
+        <Button variant="ghost" size="icon" onClick={() => navigate('/search')}>
+          <Search className="w-5 h-5" />
+        </Button>
+      }
+    >
       <div className="space-y-6">
         {/* Welcome section */}
         <section className="text-center py-8">

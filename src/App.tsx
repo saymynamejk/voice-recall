@@ -7,6 +7,15 @@ import { FirebaseProvider } from "@/lib/firebase";
 import { AppProvider } from "@/context/AppContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import FirebaseSetup from "./pages/FirebaseSetup";
+import ProjectDetail from "./pages/ProjectDetail";
+import BucketView from "./pages/BucketView";
+import DailyLog from "./pages/DailyLog";
+import Settings from "./pages/Settings";
+import AISettings from "./pages/AISettings";
+import Search from "./pages/Search";
+import NewProject from "./pages/NewProject";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +29,15 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/setup/firebase" element={<FirebaseSetup />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/projects/new" element={<NewProject />} />
+              <Route path="/projects/:projectId" element={<ProjectDetail />} />
+              <Route path="/projects/:projectId/buckets/:bucketType" element={<BucketView />} />
+              <Route path="/projects/:projectId/daily-log" element={<DailyLog />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/ai" element={<AISettings />} />
+              <Route path="/search" element={<Search />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
